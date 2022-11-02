@@ -340,6 +340,7 @@ func k8sIPs(addr string) []string {
 
 	var podIPs []string
 	for _, pod := range pods.Items {
+		// log.Printf("pod: %s", pod.Name)
 		for _, podIP := range pod.Status.PodIPs {
 			podIPs = append(podIPs, podIP.IP)
 		}
@@ -617,6 +618,7 @@ func (l *Listener) closeHandles(key string) {
 func (l *Listener) activatePcap() error {
 	var e error
 	var msg string
+
 	for _, ifi := range l.Interfaces {
 		if _, found := l.Handles[ifi.Name]; found {
 			continue
@@ -751,7 +753,6 @@ func (l *Listener) setInterfaces() (err error) {
 	if err != nil {
 		return
 	}
-
 	for _, pi := range pifis {
 		ignore := false
 		for _, ig := range l.config.IgnoreInterface {
@@ -766,7 +767,7 @@ func (l *Listener) setInterfaces() (err error) {
 		}
 
 		if strings.HasPrefix(l.host, "k8s://") {
-			if !strings.HasPrefix(pi.Name, "veth") {
+			if !strings.HasPrefix(pi.Name, "eni") {
 				continue
 			}
 		}

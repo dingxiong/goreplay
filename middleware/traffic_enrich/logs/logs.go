@@ -12,7 +12,6 @@ All logs should be sent to stderr.
 
 func Debug(args ...interface{}) {
 	if os.Getenv("GOR_TEST") == "1" {
-		fmt.Fprint(os.Stderr, "[DEBUG][TOKEN-MOD] ")
 		fmt.Fprintln(os.Stderr, args...)
 	}
 }

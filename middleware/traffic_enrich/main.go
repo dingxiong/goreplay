@@ -27,7 +27,6 @@ func main() {
 		buf := make([]byte, len(encoded)/2)
 		hex.Decode(buf, encoded)
 
-		DDClient.Incr("traffic_replay.count", []string{"type:total"}, 1)
 		t := time.Now()
 		process(buf)
 		DDClient.Histogram("traffic_replay.latency", float64(time.Since(t))/1e9, []string{"type:total"}, 1)
@@ -50,7 +49,7 @@ func process(buf []byte) {
 	payload := buf[headerSize:]
 
 	logs.Debug("Received payload:", string(buf))
-
+	DDClient.Incr("traffic_replay.count", []string{"type:total"}, 1)
 	switch payloadType {
 	case '1': // Request
 		DDClient.Incr("traffic_replay.count", []string{"type:request"}, 1)

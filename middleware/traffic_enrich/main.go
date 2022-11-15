@@ -8,6 +8,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
+
+	"zip/infra/traffic_enrich/logs"
 
 	"github.com/buger/goreplay/proto"
 	"github.com/graphql-go/graphql/language/ast"
@@ -18,12 +21,18 @@ import (
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 
+	logs.Info("Traffic enrichment starts.")
 	for scanner.Scan() {
 		encoded := scanner.Bytes()
 		buf := make([]byte, len(encoded)/2)
 		hex.Decode(buf, encoded)
 
+		logs.Info("xxx")
+		DDClient.Incr("traffic_replay.count", []string{}, 1)
+		logs.Info("yyy")
+		t := time.Now()
 		process(buf)
+		DDClient.Histogram("traffic_replay.latency", float64(time.Since(t))/1e9, []string{}, 1)
 	}
 }
 
@@ -42,20 +51,20 @@ func process(buf []byte) {
 	// reqID := string(meta[1])
 	payload := buf[headerSize:]
 
-	Debug("Received payload:", string(buf))
+	logs.Debug("Received payload:", string(buf))
 
 	switch payloadType {
 	case '1': // Request
 		url := proto.Path(payload)
-		Debug(string(url))
+		logs.Debug(string(url))
 		if bytes.Equal(url, []byte("/graphql")) {
 			p, err := GetGrapqhlPayload(payload)
 			if err != nil {
-				Debug(err)
+				logs.Debug(err)
 				return
 			}
 			if !p.IsQuery {
-				Debug("Ignore write traffic")
+				logs.Debug("Ignore write traffic")
 				return
 			}
 			newPayload := proto.SetHeader(payload, []byte("Canonical-Resource"), []byte(p.Operation))
@@ -101,7 +110,7 @@ func GetGrapqhlPayload(payload []byte) (*GraphQLPayLoad, error) {
 	if err != nil {
 		return nil, err
 	}
-	Debug(printer.Print(astDoc))
+	logs.Debug(printer.Print(astDoc))
 
 	for _, definition := range astDoc.Definitions {
 		switch definition := definition.(type) {
@@ -117,11 +126,4 @@ func GetGrapqhlPayload(payload []byte) (*GraphQLPayLoad, error) {
 	}
 
 	return &result, nil
-}
-
-func Debug(args ...interface{}) {
-	if os.Getenv("GOR_TEST") == "1" {
-		fmt.Fprint(os.Stderr, "[DEBUG][TOKEN-MOD] ")
-		fmt.Fprintln(os.Stderr, args...)
-	}
 }

@@ -27,12 +27,10 @@ func main() {
 		buf := make([]byte, len(encoded)/2)
 		hex.Decode(buf, encoded)
 
-		logs.Info("xxx")
-		DDClient.Incr("traffic_replay.count", []string{}, 1)
-		logs.Info("yyy")
+		DDClient.Incr("traffic_replay.count", []string{"type:total"}, 1)
 		t := time.Now()
 		process(buf)
-		DDClient.Histogram("traffic_replay.latency", float64(time.Since(t))/1e9, []string{}, 1)
+		DDClient.Histogram("traffic_replay.latency", float64(time.Since(t))/1e9, []string{"type:total"}, 1)
 	}
 }
 
@@ -55,6 +53,7 @@ func process(buf []byte) {
 
 	switch payloadType {
 	case '1': // Request
+		DDClient.Incr("traffic_replay.count", []string{"type:request"}, 1)
 		url := proto.Path(payload)
 		logs.Debug(string(url))
 		if bytes.Equal(url, []byte("/graphql")) {
@@ -74,7 +73,9 @@ func process(buf []byte) {
 			os.Stdout.Write(encode(buf))
 		}
 	case '2': // Original response
+		DDClient.Incr("traffic_replay.count", []string{"type:original_response"}, 1)
 	case '3': // Replayed response
+		DDClient.Incr("traffic_replay.count", []string{"type:replayed_response"}, 1)
 	default:
 	}
 }
